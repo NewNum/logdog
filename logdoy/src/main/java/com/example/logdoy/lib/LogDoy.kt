@@ -17,6 +17,10 @@ object LogDoy {
     @Volatile
     internal var starter: ((Application) -> Unit)? = null
 
+    init {
+        starter = { app -> FloatingLogController.start(app) }
+    }
+
     fun init(app: Application) {
         if (started) return
         started = true
@@ -39,7 +43,7 @@ object LogDoy {
     internal fun resetForTest() {
         started = false
         initialized = false
-        starter = null
         bufferRef = LogBuffer()
+        starter = { app -> FloatingLogController.start(app) }
     }
 }
