@@ -39,6 +39,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     private var dragStartTranslationX = 0f
     private var dragStartTranslationY = 0f
     private var bubbleDragMoved = false
+    private var bubbleTracking = false
     private var panelDragging = false
     private var ignorePanelDrag = false
 
@@ -50,9 +51,11 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
                 dragStartTranslationX = bubble.translationX
                 dragStartTranslationY = bubble.translationY
                 bubbleDragMoved = false
+                bubbleTracking = true
                 true
             }
             MotionEvent.ACTION_MOVE -> {
+                if (!bubbleTracking) return@OnTouchListener false
                 val dx = event.rawX - dragStartRawX
                 val dy = event.rawY - dragStartRawY
                 if (abs(dx) > touchSlop || abs(dy) > touchSlop) {
@@ -63,6 +66,8 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
                 true
             }
             MotionEvent.ACTION_UP -> {
+                if (!bubbleTracking) return@OnTouchListener false
+                bubbleTracking = false
                 if (!bubbleDragMoved) {
                     expandFromBubble()
                 } else {
@@ -72,6 +77,8 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
                 true
             }
             MotionEvent.ACTION_CANCEL -> {
+                if (!bubbleTracking) return@OnTouchListener false
+                bubbleTracking = false
                 clampTranslation(bubble)
                 onStateChanged?.invoke(false, bubble.translationX, bubble.translationY)
                 true
@@ -244,6 +251,10 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        // Once a drag/press starts, keep receiving moves even if the finger leaves the view.
+        if (panelDragging || bubbleTracking) {
+            return super.dispatchTouchEvent(ev)
+        }
         val targetVisible = when {
             panelContainer.visibility == VISIBLE && isTouchInside(panelContainer, ev) -> true
             bubble.visibility == VISIBLE && isTouchInside(bubble, ev) -> true
