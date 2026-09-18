@@ -9,7 +9,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class LogListAdapter : RecyclerView.Adapter<LogListAdapter.LogViewHolder>() {
+internal class LogListAdapter : RecyclerView.Adapter<LogListAdapter.LogViewHolder>() {
 
     private val entries = mutableListOf<LogEntry>()
     private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())

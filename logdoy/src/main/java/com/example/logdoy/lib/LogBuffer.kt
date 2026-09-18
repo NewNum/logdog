@@ -3,7 +3,7 @@ package com.example.logdoy.lib
 import java.util.ArrayDeque
 import java.util.concurrent.CopyOnWriteArrayList
 
-class LogBuffer(private val capacity: Int = 500) {
+internal class LogBuffer(private val capacity: Int = 500) {
     private val lock = Any()
     private val entries = ArrayDeque<LogEntry>(capacity.coerceAtLeast(1))
     private val observers = CopyOnWriteArrayList<(LogEntry) -> Unit>()
@@ -28,6 +28,14 @@ class LogBuffer(private val capacity: Int = 500) {
 
     fun addObserver(observer: (LogEntry) -> Unit) {
         observers.add(observer)
+    }
+
+    /** Registers [observer] and returns the current buffer contents atomically (no gap vs [add]). */
+    fun subscribe(observer: (LogEntry) -> Unit): List<LogEntry> {
+        synchronized(lock) {
+            observers.add(observer)
+            return entries.toList()
+        }
     }
 
     fun removeObserver(observer: (LogEntry) -> Unit) {

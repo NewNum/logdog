@@ -1,6 +1,6 @@
 package com.example.logdoy.lib
 
-data class LogEntry(
+internal data class LogEntry(
     val timestampMs: Long,
     val tag: String?,
     val message: String,

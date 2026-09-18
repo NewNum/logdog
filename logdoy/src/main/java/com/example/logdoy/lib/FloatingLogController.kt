@@ -8,7 +8,7 @@ import android.os.Looper
 import android.view.ViewGroup
 import java.lang.ref.WeakReference
 
-object FloatingLogController {
+internal object FloatingLogController {
     private val mainHandler = Handler(Looper.getMainLooper())
     @Volatile private var registered = false
     private var expanded: Boolean = true
@@ -61,15 +61,15 @@ object FloatingLogController {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             ),
         )
-        view.bind(LogDoy.buffer.snapshot())
-        view.applyState(expanded, posX, posY)
         val obs: (LogEntry) -> Unit = { entry ->
             mainHandler.post {
                 floatingView?.append(entry)
             }
         }
+        val snap = LogDoy.buffer.subscribe(obs)
         observer = obs
-        LogDoy.buffer.addObserver(obs)
+        view.bind(snap)
+        view.applyState(expanded, posX, posY)
         attachedActivity = WeakReference(activity)
     }
 

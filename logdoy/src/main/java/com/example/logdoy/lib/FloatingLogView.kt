@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
 
-class FloatingLogView(context: Context) : FrameLayout(context) {
+internal class FloatingLogView(context: Context) : FrameLayout(context) {
 
     var onStateChanged: ((expanded: Boolean, x: Float, y: Float) -> Unit)? = null
 
