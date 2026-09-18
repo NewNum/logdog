@@ -24,4 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "LogDoy"
 include(":app")
+include(":logdoy")
  
