@@ -137,6 +137,13 @@ class FloatingLogView(context: Context) : FrameLayout(context) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && h > 0) {
             sizePanelToHalfParent()
+            if (expanded) {
+                clampTranslation(panelContainer)
+                onStateChanged?.invoke(true, panelContainer.translationX, panelContainer.translationY)
+            } else {
+                clampTranslation(bubble)
+                onStateChanged?.invoke(false, bubble.translationX, bubble.translationY)
+            }
         }
     }
 
