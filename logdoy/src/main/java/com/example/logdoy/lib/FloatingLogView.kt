@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
@@ -17,10 +18,12 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     var onPanelSizeChanged: ((width: Int, height: Int) -> Unit)? = null
 
     private val panelContainer: FrameLayout
+    private val clearButton: View
     private val minimizeButton: View
     private val bubble: TextView
     private val logList: RecyclerView
     private val adapter = LogListAdapter()
+    private var clearConfirmDialog: AlertDialog? = null
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val density = resources.displayMetrics.density
@@ -110,6 +113,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
 
         panelContainer = findViewById(R.id.logdoy_panel_container)
+        clearButton = findViewById(R.id.logdoy_clear)
         minimizeButton = findViewById(R.id.logdoy_minimize)
         bubble = findViewById(R.id.logdoy_bubble)
         logList = findViewById(R.id.logdoy_list)
@@ -117,6 +121,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         logList.layoutManager = LinearLayoutManager(context)
         logList.adapter = adapter
 
+        clearButton.setOnClickListener { confirmClearLogs() }
         minimizeButton.setOnClickListener { minimize() }
         bubble.setOnTouchListener(bubbleTouchListener)
 
@@ -219,7 +224,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         if (panelContainer.visibility != VISIBLE) return false
         return when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                if (isTouchInside(minimizeButton, ev)) {
+                if (isTouchInside(minimizeButton, ev) || isTouchInside(clearButton, ev)) {
                     ignorePanelDrag = true
                     panelDragging = false
                     panelResizing = false
@@ -456,7 +461,31 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         onStateChanged?.invoke(true, panelContainer.translationX, panelContainer.translationY)
     }
 
+    override fun onDetachedFromWindow() {
+        clearConfirmDialog?.dismiss()
+        clearConfirmDialog = null
+        super.onDetachedFromWindow()
+    }
+
+    private fun confirmClearLogs() {
+        if (clearConfirmDialog?.isShowing == true) return
+        clearConfirmDialog = AlertDialog.Builder(context)
+            .setTitle(R.string.logdoy_clear_confirm_title)
+            .setMessage(R.string.logdoy_clear_confirm_message)
+            .setPositiveButton(R.string.logdoy_clear_confirm_positive) { _, _ -> clearLogs() }
+            .setNegativeButton(R.string.logdoy_clear_confirm_negative, null)
+            .setOnDismissListener { clearConfirmDialog = null }
+            .show()
+    }
+
+    private fun clearLogs() {
+        LogDoy.buffer.clear()
+        adapter.submit(emptyList())
+    }
+
     private fun minimize() {
+        clearConfirmDialog?.dismiss()
+        clearConfirmDialog = null
         pendingApplyState = null
         alignBubbleToPanelBottomEnd()
         clampTranslation(bubble)

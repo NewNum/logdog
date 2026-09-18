@@ -26,6 +26,15 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/logdoy_clear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:text="@string/logdoy_clear"
+            android:textColor="@android:color/white"
+            android:textSize="14sp" />
+
+        <TextView
             android:id="@+id/logdoy_minimize"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

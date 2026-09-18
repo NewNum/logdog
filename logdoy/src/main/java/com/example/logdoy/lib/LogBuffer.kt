@@ -43,4 +43,10 @@ internal class LogBuffer(private val capacity: Int = 500) {
     fun removeObserver(observer: (LogEntry) -> Unit) {
         observers.remove(observer)
     }
+
+    fun clear() {
+        synchronized(lock) {
+            entries.clear()
+        }
+    }
 }
