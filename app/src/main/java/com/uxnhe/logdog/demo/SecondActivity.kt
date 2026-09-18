@@ -1,9 +1,9 @@
-package com.example.logdoy
+package com.uxnhe.logdog.demo
 
 import android.os.Bundle
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
-import com.example.logdoy.lib.LogDoy
+import com.uxnhe.logdog.LogDoy
 
 class SecondActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

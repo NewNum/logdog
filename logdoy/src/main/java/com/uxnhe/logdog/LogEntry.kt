@@ -1,4 +1,4 @@
-package com.example.logdoy.lib
+package com.uxnhe.logdog
 
 internal data class LogEntry(
     val timestampMs: Long,

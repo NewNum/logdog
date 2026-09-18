@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.logdoy.lib"
+    namespace = "com.uxnhe.logdog"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1

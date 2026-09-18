@@ -1,4 +1,4 @@
-package com.example.logdoy.lib
+package com.uxnhe.logdog
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

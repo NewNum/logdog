@@ -1,4 +1,4 @@
-package com.example.logdoy.lib
+package com.uxnhe.logdog
 
 import android.view.LayoutInflater
 import android.view.View

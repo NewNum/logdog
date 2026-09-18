@@ -1,4 +1,4 @@
-package com.example.logdoy.lib
+package com.uxnhe.logdog
 
 import java.util.ArrayDeque
 import java.util.concurrent.CopyOnWriteArrayList

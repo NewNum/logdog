@@ -1,4 +1,4 @@
-package com.example.logdoy
+package com.uxnhe.logdog.demo
 
 import org.junit.Test
 

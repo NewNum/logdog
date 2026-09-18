@@ -1,7 +1,7 @@
-package com.example.logdoy
+package com.uxnhe.logdog.demo
 
 import android.app.Application
-import com.example.logdoy.lib.LogDoy
+import com.uxnhe.logdog.LogDoy
 
 class DemoApp : Application() {
     override fun onCreate() {

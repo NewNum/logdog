@@ -58,12 +58,17 @@ LogDoy.log("Network", "request ok")
 ## API
 
 ```kotlin
+import com.uxnhe.logdog.LogDoy
+
 object LogDoy {
     fun init(app: Application)
     fun log(message: String)
     fun log(tag: String, message: String)
 }
 ```
+
+Demo 应用包名：`com.uxnhe.logdog.demo`  
+Library namespace：`com.uxnhe.logdog`
 
 | 行为 | 说明 |
 |------|------|

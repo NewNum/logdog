@@ -15,7 +15,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <com.example.logdoy.lib.PanelResizeHandlesView
+        <com.uxnhe.logdog.PanelResizeHandlesView
             android:id="@+id/logdoy_resize_handles"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
