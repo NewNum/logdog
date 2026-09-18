@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">LogDoy</string>
+    <string name="btn_log">写一条日志</string>
+    <string name="btn_second">打开第二页</string>
+    <string name="second_page_message">第二页 — 悬浮窗应仍在</string>
+    <string name="finish">返回</string>
 </resources>
