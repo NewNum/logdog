@@ -62,19 +62,28 @@ internal object FloatingLogController {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             ),
         )
+        var ready = false
         val pending = ArrayDeque<LogEntry>()
         val obs: (LogEntry) -> Unit = { entry ->
-            if (Looper.myLooper() == Looper.getMainLooper()) {
-                pending.addLast(entry)
-            } else {
-                mainHandler.post {
-                    if (floatingView === view) view.append(entry)
+            val deliver = {
+                if (floatingView === view) {
+                    if (!ready) {
+                        pending.addLast(entry)
+                    } else {
+                        view.append(entry)
+                    }
                 }
+            }
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                deliver()
+            } else {
+                mainHandler.post(deliver)
             }
         }
         val snap = LogDoy.buffer.subscribe(obs)
         observer = obs
         view.bind(snap)
+        ready = true
         while (pending.isNotEmpty()) {
             view.append(pending.removeFirst())
         }
