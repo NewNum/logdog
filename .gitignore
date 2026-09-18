@@ -12,5 +12,6 @@ local.properties
 .worktrees/
 .tmp/
 .superpowers/
+/dist/
 
 **/build/
