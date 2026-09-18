@@ -25,6 +25,8 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val marginPx = (16 * resources.displayMetrics.density).toInt()
     private val bubbleSizePx = (48 * resources.displayMetrics.density).toInt()
+    /** Minimum on-screen touchable strip so the panel/bubble can still be grabbed. */
+    private val keepTouchablePx = bubbleSizePx
     private val locationScratch = IntArray(2)
 
     private var expanded = true
@@ -312,10 +314,17 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
 
     private fun clampTranslation(view: View) {
         if (width <= 0 || height <= 0) return
-        val maxX = (width - view.width).coerceAtLeast(0)
-        val maxY = (height - view.height).coerceAtLeast(0)
-        view.translationX = view.translationX.coerceIn(0f, maxX.toFloat())
-        view.translationY = view.translationY.coerceIn(0f, maxY.toFloat())
+        val viewW = view.width.coerceAtLeast(1)
+        val viewH = view.height.coerceAtLeast(1)
+        val keepX = keepTouchablePx.coerceAtMost(viewW).coerceAtLeast(1)
+        val keepY = keepTouchablePx.coerceAtMost(viewH).coerceAtLeast(1)
+        // Allow hanging off-screen; only keep a touchable strip inside the parent.
+        val minX = (keepX - viewW).toFloat()
+        val maxX = (width - keepX).toFloat()
+        val minY = (keepY - viewH).toFloat()
+        val maxY = (height - keepY).toFloat()
+        view.translationX = view.translationX.coerceIn(minX, maxX)
+        view.translationY = view.translationY.coerceIn(minY, maxY)
     }
 
     private fun isTouchInside(view: View, event: MotionEvent): Boolean {
