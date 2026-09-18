@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
 import java.lang.ref.WeakReference
+import java.util.ArrayDeque
 
 internal object FloatingLogController {
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -61,14 +62,22 @@ internal object FloatingLogController {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             ),
         )
+        val pending = ArrayDeque<LogEntry>()
         val obs: (LogEntry) -> Unit = { entry ->
-            mainHandler.post {
-                floatingView?.append(entry)
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                pending.addLast(entry)
+            } else {
+                mainHandler.post {
+                    if (floatingView === view) view.append(entry)
+                }
             }
         }
         val snap = LogDoy.buffer.subscribe(obs)
         observer = obs
         view.bind(snap)
+        while (pending.isNotEmpty()) {
+            view.append(pending.removeFirst())
+        }
         view.applyState(expanded, posX, posY)
         attachedActivity = WeakReference(activity)
     }

@@ -9,13 +9,15 @@ internal class LogBuffer(private val capacity: Int = 500) {
     private val observers = CopyOnWriteArrayList<(LogEntry) -> Unit>()
 
     fun add(entry: LogEntry) {
+        val snapshotObservers: List<(LogEntry) -> Unit>
         synchronized(lock) {
             while (entries.size >= capacity) {
                 entries.removeFirst()
             }
             entries.addLast(entry)
+            snapshotObservers = observers.toList()
         }
-        observers.forEach { it(entry) }
+        snapshotObservers.forEach { it(entry) }
     }
 
     fun snapshot(): List<LogEntry> = synchronized(lock) {
