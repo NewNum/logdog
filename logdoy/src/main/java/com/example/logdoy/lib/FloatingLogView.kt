@@ -26,8 +26,8 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     private val bubbleSizePx = (48 * resources.displayMetrics.density).toInt()
     /** Minimum on-screen touchable strip so the panel/bubble can still be grabbed. */
     private val keepTouchablePx = bubbleSizePx
-    /** Drag handle thickness — matches the visible border and stays easy to grab. */
-    private val borderDragPx = (10 * resources.displayMetrics.density).toInt()
+    /** Drag hit area — wider than the 10dp visual border so it is easy to grab. */
+    private val borderDragPx = (28 * resources.displayMetrics.density).toInt()
     private val locationScratch = IntArray(2)
 
     private var expanded = false
@@ -178,6 +178,12 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         }
     }
 
+    override fun requestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
+        // Border-drag gestures must not be stolen by the log list.
+        if (panelDragging || !ignorePanelDrag) return
+        super.requestDisallowInterceptTouchEvent(disallowIntercept)
+    }
+
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         if (panelContainer.visibility != VISIBLE) return false
         when (ev.actionMasked) {
@@ -190,21 +196,18 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
                 dragStartRawY = ev.rawY
                 dragStartTranslationX = panelContainer.translationX
                 dragStartTranslationY = panelContainer.translationY
-                return false
+                // Capture immediately so RecyclerView cannot take over near the edges.
+                panelDragging = true
+                return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (ignorePanelDrag || panelDragging) return panelDragging
-                val dx = abs(ev.rawX - dragStartRawX)
-                val dy = abs(ev.rawY - dragStartRawY)
-                if (dx > touchSlop || dy > touchSlop) {
-                    panelDragging = true
-                    parent?.requestDisallowInterceptTouchEvent(true)
-                    return true
-                }
+                return panelDragging
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                val wasDragging = panelDragging
                 panelDragging = false
                 ignorePanelDrag = false
+                return wasDragging
             }
         }
         return false
@@ -214,8 +217,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         if (panelContainer.visibility != VISIBLE) return false
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                // Intercept may have already recorded; keep receiving follow-up events.
-                return !ignorePanelDrag
+                return panelDragging || !ignorePanelDrag
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!panelDragging) return false
