@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/logdoy_panel_bg"
     android:orientation="vertical"
-    android:padding="3dp">
+    android:padding="10dp">
 
     <LinearLayout
         android:id="@+id/logdoy_header"

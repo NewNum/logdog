@@ -27,7 +27,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     /** Minimum on-screen touchable strip so the panel/bubble can still be grabbed. */
     private val keepTouchablePx = bubbleSizePx
     /** Drag handle thickness — matches the visible border and stays easy to grab. */
-    private val borderDragPx = (14 * resources.displayMetrics.density).toInt()
+    private val borderDragPx = (10 * resources.displayMetrics.density).toInt()
     private val locationScratch = IntArray(2)
 
     private var expanded = false
