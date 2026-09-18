@@ -28,7 +28,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     private val keepTouchablePx = bubbleSizePx
     private val locationScratch = IntArray(2)
 
-    private var expanded = true
+    private var expanded = false
     private var defaultPositionApplied = false
     private var pendingApplyState: Pair<Boolean, Pair<Float, Float>>? = null
 
@@ -95,8 +95,10 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         minimizeButton.setOnClickListener { minimize() }
         bubble.setOnTouchListener(bubbleTouchListener)
 
-        // Lock size before first content measure so log appends cannot grow the panel.
+        // Lock panel size before first content measure so log appends cannot grow it.
         panelContainer.layoutParams = LayoutParams(0, 0)
+        panelContainer.visibility = GONE
+        bubble.visibility = VISIBLE
         post { ensurePanelSizeAndDefaultPlacement() }
     }
 
@@ -117,6 +119,11 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
                 if (expanded) {
                     placePanelDefault()
                     clampTranslation(panelContainer)
+                } else {
+                    panelContainer.visibility = GONE
+                    bubble.visibility = VISIBLE
+                    placeBubbleDefault()
+                    clampTranslation(bubble)
                 }
             }
         }
@@ -136,10 +143,11 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
 
     fun applyState(expanded: Boolean, x: Float, y: Float) {
         this.expanded = expanded
-        if (width <= 0 || height <= 0 || panelContainer.width <= 0) {
+        if (width <= 0 || height <= 0) {
             pendingApplyState = expanded to (x to y)
             return
         }
+        sizePanelToHalfParent()
         applyStateInternal(expanded, x, y)
     }
 
@@ -159,7 +167,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
             panelContainer.visibility = GONE
             bubble.visibility = VISIBLE
             if (x.isNaN() || y.isNaN()) {
-                placeBubbleDefaultFromPanel()
+                placeBubbleDefault()
             } else {
                 bubble.translationX = x
                 bubble.translationY = y
@@ -294,9 +302,9 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         panelContainer.translationY = (height - panelH - marginPx).toFloat().coerceAtLeast(0f)
     }
 
-    private fun placeBubbleDefaultFromPanel() {
-        placePanelDefault()
-        alignBubbleToPanelBottomEnd()
+    private fun placeBubbleDefault() {
+        bubble.translationX = (width - bubbleSizePx - marginPx).toFloat().coerceAtLeast(0f)
+        bubble.translationY = (height - bubbleSizePx - marginPx).toFloat().coerceAtLeast(0f)
     }
 
     private fun alignBubbleToPanelBottomEnd() {

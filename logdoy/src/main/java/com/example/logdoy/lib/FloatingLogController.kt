@@ -12,7 +12,7 @@ import java.util.ArrayDeque
 internal object FloatingLogController {
     private val mainHandler = Handler(Looper.getMainLooper())
     @Volatile private var registered = false
-    private var expanded: Boolean = true
+    private var expanded: Boolean = false
     private var posX: Float = Float.NaN
     private var posY: Float = Float.NaN
     private var attachedActivity: WeakReference<Activity>? = null
