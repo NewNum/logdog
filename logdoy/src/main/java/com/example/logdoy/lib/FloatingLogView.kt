@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
-import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -96,25 +95,31 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         minimizeButton.setOnClickListener { minimize() }
         bubble.setOnTouchListener(bubbleTouchListener)
 
-        viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
-            override fun onGlobalLayout() {
-                if (width <= 0 || height <= 0) return
-                sizePanelToHalfParent()
-                pendingApplyState?.let { (exp, pos) ->
-                    pendingApplyState = null
-                    applyStateInternal(exp, pos.first, pos.second)
-                } ?: run {
-                    if (!defaultPositionApplied) {
-                        defaultPositionApplied = true
-                        if (expanded) {
-                            placePanelDefault()
-                            clampTranslation(panelContainer)
-                        }
-                    }
+        // Lock size before first content measure so log appends cannot grow the panel.
+        panelContainer.layoutParams = LayoutParams(0, 0)
+        post { ensurePanelSizeAndDefaultPlacement() }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        post { ensurePanelSizeAndDefaultPlacement() }
+    }
+
+    private fun ensurePanelSizeAndDefaultPlacement() {
+        if (width <= 0 || height <= 0) return
+        sizePanelToHalfParent()
+        pendingApplyState?.let { (exp, pos) ->
+            pendingApplyState = null
+            applyStateInternal(exp, pos.first, pos.second)
+        } ?: run {
+            if (!defaultPositionApplied) {
+                defaultPositionApplied = true
+                if (expanded) {
+                    placePanelDefault()
+                    clampTranslation(panelContainer)
                 }
-                viewTreeObserver.removeOnGlobalLayoutListener(this)
             }
-        })
+        }
     }
 
     fun bind(entries: List<LogEntry>) {
@@ -245,13 +250,19 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        if (w > 0 && h > 0) {
+        if (w <= 0 || h <= 0) return
+        val parentSizeChanged = w != oldw || h != oldh
+        if (parentSizeChanged) {
             sizePanelToHalfParent()
-            if (expanded) {
-                clampTranslation(panelContainer)
+        }
+        if (expanded) {
+            clampTranslation(panelContainer)
+            if (parentSizeChanged) {
                 onStateChanged?.invoke(true, panelContainer.translationX, panelContainer.translationY)
-            } else {
-                clampTranslation(bubble)
+            }
+        } else {
+            clampTranslation(bubble)
+            if (parentSizeChanged) {
                 onStateChanged?.invoke(false, bubble.translationX, bubble.translationY)
             }
         }
@@ -294,6 +305,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     }
 
     private fun expandFromBubble() {
+        pendingApplyState = null
         panelContainer.translationX = bubble.translationX + bubbleSizePx - panelWidthPx()
         panelContainer.translationY = bubble.translationY + bubbleSizePx - panelHeightPx()
         clampTranslation(panelContainer)
@@ -304,6 +316,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     }
 
     private fun minimize() {
+        pendingApplyState = null
         alignBubbleToPanelBottomEnd()
         clampTranslation(bubble)
         panelContainer.visibility = GONE
