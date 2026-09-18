@@ -26,6 +26,8 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     private val bubbleSizePx = (48 * resources.displayMetrics.density).toInt()
     /** Minimum on-screen touchable strip so the panel/bubble can still be grabbed. */
     private val keepTouchablePx = bubbleSizePx
+    /** Drag handle thickness — matches the visible border and stays easy to grab. */
+    private val borderDragPx = (14 * resources.displayMetrics.density).toInt()
     private val locationScratch = IntArray(2)
 
     private var expanded = false
@@ -176,21 +178,14 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         }
     }
 
-    override fun requestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
-        // Keep the ability to steal gestures for whole-panel drag, including over the list.
-        if (ignorePanelDrag) {
-            super.requestDisallowInterceptTouchEvent(disallowIntercept)
-        }
-    }
-
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        if (panelContainer.visibility != VISIBLE || !isTouchInside(panelContainer, ev)) {
-            return false
-        }
+        if (panelContainer.visibility != VISIBLE) return false
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                ignorePanelDrag = isTouchInside(minimizeButton, ev)
+                val onBorder = isTouchOnPanelBorder(ev)
+                ignorePanelDrag = !onBorder || isTouchInside(minimizeButton, ev)
                 panelDragging = false
+                if (ignorePanelDrag) return false
                 dragStartRawX = ev.rawX
                 dragStartRawY = ev.rawY
                 dragStartTranslationX = panelContainer.translationX
@@ -346,6 +341,21 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         val maxY = (height - keepY).toFloat()
         view.translationX = view.translationX.coerceIn(minX, maxX)
         view.translationY = view.translationY.coerceIn(minY, maxY)
+    }
+
+    private fun isTouchOnPanelBorder(event: MotionEvent): Boolean {
+        if (!isTouchInside(panelContainer, event)) return false
+        panelContainer.getLocationOnScreen(locationScratch)
+        val localX = event.rawX - locationScratch[0]
+        val localY = event.rawY - locationScratch[1]
+        val w = panelContainer.width.toFloat()
+        val h = panelContainer.height.toFloat()
+        if (w <= 0f || h <= 0f) return false
+        val border = borderDragPx.toFloat().coerceAtMost(minOf(w, h) / 3f)
+        return localX < border ||
+            localX >= w - border ||
+            localY < border ||
+            localY >= h - border
     }
 
     private fun isTouchInside(view: View, event: MotionEvent): Boolean {
