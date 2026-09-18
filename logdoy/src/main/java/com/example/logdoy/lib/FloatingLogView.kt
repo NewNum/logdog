@@ -17,7 +17,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     var onStateChanged: ((expanded: Boolean, x: Float, y: Float) -> Unit)? = null
 
     private val panelContainer: FrameLayout
-    private val header: View
+    private val minimizeButton: View
     private val bubble: TextView
     private val logList: RecyclerView
     private val adapter = LogListAdapter()
@@ -25,6 +25,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val marginPx = (16 * resources.displayMetrics.density).toInt()
     private val bubbleSizePx = (48 * resources.displayMetrics.density).toInt()
+    private val locationScratch = IntArray(2)
 
     private var expanded = true
     private var defaultPositionApplied = false
@@ -35,6 +36,46 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     private var dragStartTranslationX = 0f
     private var dragStartTranslationY = 0f
     private var bubbleDragMoved = false
+    private var panelDragging = false
+    private var ignorePanelDrag = false
+
+    private val bubbleTouchListener = View.OnTouchListener { _, event ->
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                dragStartRawX = event.rawX
+                dragStartRawY = event.rawY
+                dragStartTranslationX = bubble.translationX
+                dragStartTranslationY = bubble.translationY
+                bubbleDragMoved = false
+                true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = event.rawX - dragStartRawX
+                val dy = event.rawY - dragStartRawY
+                if (abs(dx) > touchSlop || abs(dy) > touchSlop) {
+                    bubbleDragMoved = true
+                }
+                bubble.translationX = dragStartTranslationX + dx
+                bubble.translationY = dragStartTranslationY + dy
+                true
+            }
+            MotionEvent.ACTION_UP -> {
+                if (!bubbleDragMoved) {
+                    expandFromBubble()
+                } else {
+                    clampTranslation(bubble)
+                    onStateChanged?.invoke(false, bubble.translationX, bubble.translationY)
+                }
+                true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                clampTranslation(bubble)
+                onStateChanged?.invoke(false, bubble.translationX, bubble.translationY)
+                true
+            }
+            else -> false
+        }
+    }
 
     init {
         isClickable = false
@@ -43,14 +84,15 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
 
         panelContainer = findViewById(R.id.logdoy_panel_container)
-        header = findViewById(R.id.logdoy_header)
+        minimizeButton = findViewById(R.id.logdoy_minimize)
         bubble = findViewById(R.id.logdoy_bubble)
         logList = findViewById(R.id.logdoy_list)
 
         logList.layoutManager = LinearLayoutManager(context)
         logList.adapter = adapter
 
-        findViewById<View>(R.id.logdoy_minimize).setOnClickListener { minimize() }
+        minimizeButton.setOnClickListener { minimize() }
+        bubble.setOnTouchListener(bubbleTouchListener)
 
         viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
@@ -119,9 +161,75 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         }
     }
 
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean = false
+    override fun requestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
+        // Keep the ability to steal gestures for whole-panel drag, including over the list.
+        if (ignorePanelDrag) {
+            super.requestDisallowInterceptTouchEvent(disallowIntercept)
+        }
+    }
 
-    override fun onTouchEvent(event: MotionEvent): Boolean = false
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (panelContainer.visibility != VISIBLE || !isTouchInside(panelContainer, ev)) {
+            return false
+        }
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                ignorePanelDrag = isTouchInside(minimizeButton, ev)
+                panelDragging = false
+                dragStartRawX = ev.rawX
+                dragStartRawY = ev.rawY
+                dragStartTranslationX = panelContainer.translationX
+                dragStartTranslationY = panelContainer.translationY
+                return false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (ignorePanelDrag || panelDragging) return panelDragging
+                val dx = abs(ev.rawX - dragStartRawX)
+                val dy = abs(ev.rawY - dragStartRawY)
+                if (dx > touchSlop || dy > touchSlop) {
+                    panelDragging = true
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    return true
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                panelDragging = false
+                ignorePanelDrag = false
+            }
+        }
+        return false
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (panelContainer.visibility != VISIBLE) return false
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                // Intercept may have already recorded; keep receiving follow-up events.
+                return !ignorePanelDrag
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!panelDragging) return false
+                panelContainer.translationX =
+                    dragStartTranslationX + (event.rawX - dragStartRawX)
+                panelContainer.translationY =
+                    dragStartTranslationY + (event.rawY - dragStartRawY)
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (!panelDragging) return false
+                clampTranslation(panelContainer)
+                onStateChanged?.invoke(
+                    true,
+                    panelContainer.translationX,
+                    panelContainer.translationY,
+                )
+                panelDragging = false
+                ignorePanelDrag = false
+                return true
+            }
+        }
+        return panelDragging
+    }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         val targetVisible = when {
@@ -211,77 +319,13 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     }
 
     private fun isTouchInside(view: View, event: MotionEvent): Boolean {
-        if (view.visibility != VISIBLE) return false
-        val x = event.x - (view.left + view.translationX)
-        val y = event.y - (view.top + view.translationY)
-        return x >= 0f && x <= view.width && y >= 0f && y <= view.height
-    }
-
-    private val panelDragListener = View.OnTouchListener { _, event ->
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                dragStartRawX = event.rawX
-                dragStartRawY = event.rawY
-                dragStartTranslationX = panelContainer.translationX
-                dragStartTranslationY = panelContainer.translationY
-                true
-            }
-            MotionEvent.ACTION_MOVE -> {
-                panelContainer.translationX =
-                    dragStartTranslationX + (event.rawX - dragStartRawX)
-                panelContainer.translationY =
-                    dragStartTranslationY + (event.rawY - dragStartRawY)
-                true
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                clampTranslation(panelContainer)
-                onStateChanged?.invoke(true, panelContainer.translationX, panelContainer.translationY)
-                true
-            }
-            else -> false
-        }
-    }
-
-    private val bubbleTouchListener = View.OnTouchListener { _, event ->
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                dragStartRawX = event.rawX
-                dragStartRawY = event.rawY
-                dragStartTranslationX = bubble.translationX
-                dragStartTranslationY = bubble.translationY
-                bubbleDragMoved = false
-                true
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = event.rawX - dragStartRawX
-                val dy = event.rawY - dragStartRawY
-                if (abs(dx) > touchSlop || abs(dy) > touchSlop) {
-                    bubbleDragMoved = true
-                }
-                bubble.translationX = dragStartTranslationX + dx
-                bubble.translationY = dragStartTranslationY + dy
-                true
-            }
-            MotionEvent.ACTION_UP -> {
-                if (!bubbleDragMoved) {
-                    expandFromBubble()
-                } else {
-                    clampTranslation(bubble)
-                    onStateChanged?.invoke(false, bubble.translationX, bubble.translationY)
-                }
-                true
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                clampTranslation(bubble)
-                onStateChanged?.invoke(false, bubble.translationX, bubble.translationY)
-                true
-            }
-            else -> false
-        }
-    }
-
-    init {
-        header.setOnTouchListener(panelDragListener)
-        bubble.setOnTouchListener(bubbleTouchListener)
+        if (view.visibility != VISIBLE || view.width <= 0 || view.height <= 0) return false
+        view.getLocationOnScreen(locationScratch)
+        val x = event.rawX
+        val y = event.rawY
+        return x >= locationScratch[0] &&
+            x < locationScratch[0] + view.width &&
+            y >= locationScratch[1] &&
+            y < locationScratch[1] + view.height
     }
 }
