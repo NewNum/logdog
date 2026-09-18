@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="logdoy_title">LogDoy</string>
+    <string name="logdoy_minimize">—</string>
+    <string name="logdoy_bubble_label">L</string>
+</resources>
