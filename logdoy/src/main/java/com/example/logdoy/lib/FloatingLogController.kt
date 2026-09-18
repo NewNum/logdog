@@ -15,6 +15,8 @@ internal object FloatingLogController {
     private var expanded: Boolean = false
     private var posX: Float = Float.NaN
     private var posY: Float = Float.NaN
+    private var panelWidth: Int = 0
+    private var panelHeight: Int = 0
     private var attachedActivity: WeakReference<Activity>? = null
     private var floatingView: FloatingLogView? = null
     private var observer: ((LogEntry) -> Unit)? = null
@@ -54,6 +56,13 @@ internal object FloatingLogController {
             expanded = exp
             posX = x
             posY = y
+        }
+        view.onPanelSizeChanged = { w, h ->
+            panelWidth = w
+            panelHeight = h
+        }
+        if (panelWidth > 0 && panelHeight > 0) {
+            view.setPanelSize(panelWidth, panelHeight)
         }
         decor.addView(
             view,

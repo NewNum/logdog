@@ -14,6 +14,7 @@ import kotlin.math.abs
 internal class FloatingLogView(context: Context) : FrameLayout(context) {
 
     var onStateChanged: ((expanded: Boolean, x: Float, y: Float) -> Unit)? = null
+    var onPanelSizeChanged: ((width: Int, height: Int) -> Unit)? = null
 
     private val panelContainer: FrameLayout
     private val minimizeButton: View
@@ -22,26 +23,41 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     private val adapter = LogListAdapter()
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-    private val marginPx = (16 * resources.displayMetrics.density).toInt()
-    private val bubbleSizePx = (48 * resources.displayMetrics.density).toInt()
-    /** Minimum on-screen touchable strip so the panel/bubble can still be grabbed. */
+    private val density = resources.displayMetrics.density
+    private val marginPx = (16 * density).toInt()
+    private val bubbleSizePx = (48 * density).toInt()
     private val keepTouchablePx = bubbleSizePx
-    /** Drag hit area — wider than the 10dp visual border so it is easy to grab. */
-    private val borderDragPx = (28 * resources.displayMetrics.density).toInt()
+    private val borderDragPx = (28 * density).toInt()
+    private val handleLenPx = (40 * density).toInt()
+    private val handleHitPx = (28 * density).toInt()
+    private val minPanelPx = (120 * density).toInt()
     private val locationScratch = IntArray(2)
 
     private var expanded = false
     private var defaultPositionApplied = false
     private var pendingApplyState: Pair<Boolean, Pair<Float, Float>>? = null
+    private var storedPanelWidth = 0
+    private var storedPanelHeight = 0
 
     private var dragStartRawX = 0f
     private var dragStartRawY = 0f
     private var dragStartTranslationX = 0f
     private var dragStartTranslationY = 0f
+    private var dragStartPanelWidth = 0
+    private var dragStartPanelHeight = 0
     private var bubbleDragMoved = false
     private var bubbleTracking = false
     private var panelDragging = false
+    private var panelResizing = false
     private var ignorePanelDrag = false
+    private var activeResizeHandle: ResizeHandle? = null
+
+    private enum class ResizeHandle {
+        BOTTOM_LEFT_UP,
+        BOTTOM_LEFT_RIGHT,
+        BOTTOM_RIGHT_UP,
+        BOTTOM_RIGHT_LEFT,
+    }
 
     private val bubbleTouchListener = View.OnTouchListener { _, event ->
         when (event.actionMasked) {
@@ -104,7 +120,6 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         minimizeButton.setOnClickListener { minimize() }
         bubble.setOnTouchListener(bubbleTouchListener)
 
-        // Lock panel size before first content measure so log appends cannot grow it.
         panelContainer.layoutParams = LayoutParams(0, 0)
         panelContainer.visibility = GONE
         bubble.visibility = VISIBLE
@@ -116,9 +131,19 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         post { ensurePanelSizeAndDefaultPlacement() }
     }
 
+    fun setPanelSize(widthPx: Int, heightPx: Int) {
+        if (widthPx > 0 && heightPx > 0) {
+            storedPanelWidth = widthPx
+            storedPanelHeight = heightPx
+            if (this.width > 0 && this.height > 0) {
+                applyStoredPanelSize()
+            }
+        }
+    }
+
     private fun ensurePanelSizeAndDefaultPlacement() {
         if (width <= 0 || height <= 0) return
-        sizePanelToHalfParent()
+        ensureDefaultPanelSize()
         pendingApplyState?.let { (exp, pos) ->
             pendingApplyState = null
             applyStateInternal(exp, pos.first, pos.second)
@@ -156,7 +181,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
             pendingApplyState = expanded to (x to y)
             return
         }
-        sizePanelToHalfParent()
+        ensureDefaultPanelSize()
         applyStateInternal(expanded, x, y)
     }
 
@@ -186,73 +211,101 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     }
 
     override fun requestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
-        // Border-drag gestures must not be stolen by the log list.
-        if (panelDragging || !ignorePanelDrag) return
+        if (panelDragging || panelResizing || !ignorePanelDrag) return
         super.requestDisallowInterceptTouchEvent(disallowIntercept)
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         if (panelContainer.visibility != VISIBLE) return false
-        when (ev.actionMasked) {
+        return when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                val onBorder = isTouchOnPanelBorder(ev)
-                ignorePanelDrag = !onBorder || isTouchInside(minimizeButton, ev)
-                panelDragging = false
-                if (ignorePanelDrag) return false
-                dragStartRawX = ev.rawX
-                dragStartRawY = ev.rawY
-                dragStartTranslationX = panelContainer.translationX
-                dragStartTranslationY = panelContainer.translationY
-                // Capture immediately so RecyclerView cannot take over near the edges.
-                panelDragging = true
-                return true
+                if (isTouchInside(minimizeButton, ev)) {
+                    ignorePanelDrag = true
+                    panelDragging = false
+                    panelResizing = false
+                    activeResizeHandle = null
+                    false
+                } else {
+                    val resizeHandle = hitResizeHandle(ev)
+                    if (resizeHandle != null) {
+                        ignorePanelDrag = false
+                        panelDragging = false
+                        panelResizing = true
+                        activeResizeHandle = resizeHandle
+                        rememberPanelDragStart(ev)
+                        true
+                    } else {
+                        val onBorder = isTouchOnPanelBorder(ev)
+                        ignorePanelDrag = !onBorder
+                        panelDragging = false
+                        panelResizing = false
+                        activeResizeHandle = null
+                        if (ignorePanelDrag) {
+                            false
+                        } else {
+                            rememberPanelDragStart(ev)
+                            panelDragging = true
+                            true
+                        }
+                    }
+                }
             }
-            MotionEvent.ACTION_MOVE -> {
-                return panelDragging
-            }
+            MotionEvent.ACTION_MOVE -> panelDragging || panelResizing
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                val wasDragging = panelDragging
+                val wasCapturing = panelDragging || panelResizing
                 panelDragging = false
+                panelResizing = false
+                activeResizeHandle = null
                 ignorePanelDrag = false
-                return wasDragging
+                wasCapturing
             }
+            else -> false
         }
-        return false
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (panelContainer.visibility != VISIBLE) return false
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                return panelDragging || !ignorePanelDrag
-            }
+            MotionEvent.ACTION_DOWN -> return panelDragging || panelResizing
             MotionEvent.ACTION_MOVE -> {
-                if (!panelDragging) return false
-                panelContainer.translationX =
-                    dragStartTranslationX + (event.rawX - dragStartRawX)
-                panelContainer.translationY =
-                    dragStartTranslationY + (event.rawY - dragStartRawY)
-                return true
+                when {
+                    panelResizing -> {
+                        applyResize(event)
+                        return true
+                    }
+                    panelDragging -> {
+                        panelContainer.translationX =
+                            dragStartTranslationX + (event.rawX - dragStartRawX)
+                        panelContainer.translationY =
+                            dragStartTranslationY + (event.rawY - dragStartRawY)
+                        return true
+                    }
+                    else -> return false
+                }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (!panelDragging) return false
+                if (!panelDragging && !panelResizing) return false
                 clampTranslation(panelContainer)
                 onStateChanged?.invoke(
                     true,
                     panelContainer.translationX,
                     panelContainer.translationY,
                 )
+                if (panelResizing) {
+                    onPanelSizeChanged?.invoke(storedPanelWidth, storedPanelHeight)
+                }
                 panelDragging = false
+                panelResizing = false
+                activeResizeHandle = null
                 ignorePanelDrag = false
                 return true
             }
         }
-        return panelDragging
+        return panelDragging || panelResizing
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        // Once a drag/press starts, keep receiving moves even if the finger leaves the view.
-        if (panelDragging || bubbleTracking) {
+        if (panelDragging || panelResizing || bubbleTracking) {
             return super.dispatchTouchEvent(ev)
         }
         val targetVisible = when {
@@ -269,7 +322,9 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         if (w <= 0 || h <= 0) return
         val parentSizeChanged = w != oldw || h != oldh
         if (parentSizeChanged) {
-            sizePanelToHalfParent()
+            ensureDefaultPanelSize()
+            clampStoredPanelSize()
+            applyStoredPanelSize()
         }
         if (expanded) {
             clampTranslation(panelContainer)
@@ -284,26 +339,95 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         }
     }
 
-    private fun sizePanelToHalfParent() {
+    private fun rememberPanelDragStart(ev: MotionEvent) {
+        dragStartRawX = ev.rawX
+        dragStartRawY = ev.rawY
+        dragStartTranslationX = panelContainer.translationX
+        dragStartTranslationY = panelContainer.translationY
+        dragStartPanelWidth = panelWidthPx()
+        dragStartPanelHeight = panelHeightPx()
+    }
+
+    private fun applyResize(event: MotionEvent) {
+        val handle = activeResizeHandle ?: return
+        val dx = event.rawX - dragStartRawX
+        val dy = event.rawY - dragStartRawY
+        var newW = dragStartPanelWidth
+        var newH = dragStartPanelHeight
+        var newX = dragStartTranslationX
+        val newY = dragStartTranslationY
+
+        when (handle) {
+            ResizeHandle.BOTTOM_LEFT_UP -> {
+                newW = (dragStartPanelWidth - dx).toInt()
+                newX = dragStartTranslationX + dx
+            }
+            ResizeHandle.BOTTOM_RIGHT_UP -> {
+                newW = (dragStartPanelWidth + dx).toInt()
+            }
+            ResizeHandle.BOTTOM_LEFT_RIGHT,
+            ResizeHandle.BOTTOM_RIGHT_LEFT,
+            -> {
+                newH = (dragStartPanelHeight + dy).toInt()
+            }
+        }
+
+        val maxW = width.coerceAtLeast(minPanelPx)
+        val maxH = height.coerceAtLeast(minPanelPx)
+        newW = newW.coerceIn(minPanelPx, maxW)
+        newH = newH.coerceIn(minPanelPx, maxH)
+
+        // Keep the opposite edge stable when clamping width from the left.
+        if (handle == ResizeHandle.BOTTOM_LEFT_UP) {
+            val right = dragStartTranslationX + dragStartPanelWidth
+            newX = right - newW
+        }
+
+        storedPanelWidth = newW
+        storedPanelHeight = newH
+        applyStoredPanelSize()
+        panelContainer.translationX = newX
+        panelContainer.translationY = newY
+        clampTranslation(panelContainer)
+    }
+
+    private fun ensureDefaultPanelSize() {
         if (width <= 0 || height <= 0) return
+        if (storedPanelWidth <= 0 || storedPanelHeight <= 0) {
+            storedPanelWidth = width / 2
+            storedPanelHeight = height / 2
+        }
+        clampStoredPanelSize()
+        applyStoredPanelSize()
+    }
+
+    private fun clampStoredPanelSize() {
+        if (width <= 0 || height <= 0) return
+        storedPanelWidth = storedPanelWidth.coerceIn(minPanelPx, width.coerceAtLeast(minPanelPx))
+        storedPanelHeight = storedPanelHeight.coerceIn(minPanelPx, height.coerceAtLeast(minPanelPx))
+    }
+
+    private fun applyStoredPanelSize() {
         val lp = panelContainer.layoutParams as LayoutParams
-        val targetW = width / 2
-        val targetH = height / 2
-        if (lp.width != targetW || lp.height != targetH) {
-            lp.width = targetW
-            lp.height = targetH
+        if (lp.width != storedPanelWidth || lp.height != storedPanelHeight) {
+            lp.width = storedPanelWidth
+            lp.height = storedPanelHeight
             panelContainer.layoutParams = lp
         }
     }
 
     private fun panelWidthPx(): Int =
-        if (panelContainer.width > 0) panelContainer.width else width / 2
+        if (panelContainer.width > 0) panelContainer.width
+        else if (storedPanelWidth > 0) storedPanelWidth
+        else width / 2
 
     private fun panelHeightPx(): Int =
-        if (panelContainer.height > 0) panelContainer.height else height / 2
+        if (panelContainer.height > 0) panelContainer.height
+        else if (storedPanelHeight > 0) storedPanelHeight
+        else height / 2
 
     private fun placePanelDefault() {
-        sizePanelToHalfParent()
+        ensureDefaultPanelSize()
         val panelW = panelWidthPx()
         val panelH = panelHeightPx()
         panelContainer.translationX = (width - panelW - marginPx).toFloat().coerceAtLeast(0f)
@@ -322,6 +446,7 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
 
     private fun expandFromBubble() {
         pendingApplyState = null
+        ensureDefaultPanelSize()
         panelContainer.translationX = bubble.translationX + bubbleSizePx - panelWidthPx()
         panelContainer.translationY = bubble.translationY + bubbleSizePx - panelHeightPx()
         clampTranslation(panelContainer)
@@ -347,7 +472,6 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         val viewH = view.height.coerceAtLeast(1)
         val keepX = keepTouchablePx.coerceAtMost(viewW).coerceAtLeast(1)
         val keepY = keepTouchablePx.coerceAtMost(viewH).coerceAtLeast(1)
-        // Allow hanging off-screen; only keep a touchable strip inside the parent.
         val minX = (keepX - viewW).toFloat()
         val maxX = (width - keepX).toFloat()
         val minY = (keepY - viewH).toFloat()
@@ -356,8 +480,48 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
         view.translationY = view.translationY.coerceIn(minY, maxY)
     }
 
+    private fun hitResizeHandle(event: MotionEvent): ResizeHandle? {
+        if (!isTouchInside(panelContainer, event)) return null
+        panelContainer.getLocationOnScreen(locationScratch)
+        val x = event.rawX - locationScratch[0]
+        val y = event.rawY - locationScratch[1]
+        val w = panelContainer.width.toFloat()
+        val h = panelContainer.height.toFloat()
+        if (w <= 0f || h <= 0f) return null
+
+        val hit = handleHitPx.toFloat()
+        val len = handleLenPx.toFloat().coerceAtMost(minOf(w, h) / 2f)
+        val nearLeft = x <= hit
+        val nearRight = x >= w - hit
+        val nearBottom = y >= h - hit
+        val inBottomLen = y >= h - len - hit
+        val inLeftLen = x <= len + hit
+        val inRightLen = x >= w - len - hit
+
+        // Prefer corner segments; vertical vs horizontal by closer axis.
+        if (nearLeft && inBottomLen && nearBottom && inLeftLen) {
+            val distV = x
+            val distH = h - y
+            return if (distV <= distH) ResizeHandle.BOTTOM_LEFT_UP else ResizeHandle.BOTTOM_LEFT_RIGHT
+        }
+        if (nearLeft && inBottomLen) return ResizeHandle.BOTTOM_LEFT_UP
+        if (nearBottom && inLeftLen) return ResizeHandle.BOTTOM_LEFT_RIGHT
+
+        if (nearRight && inBottomLen && nearBottom && inRightLen) {
+            val distV = w - x
+            val distH = h - y
+            return if (distV <= distH) ResizeHandle.BOTTOM_RIGHT_UP else ResizeHandle.BOTTOM_RIGHT_LEFT
+        }
+        if (nearRight && inBottomLen) return ResizeHandle.BOTTOM_RIGHT_UP
+        if (nearBottom && inRightLen) return ResizeHandle.BOTTOM_RIGHT_LEFT
+
+        return null
+    }
+
     private fun isTouchOnPanelBorder(event: MotionEvent): Boolean {
         if (!isTouchInside(panelContainer, event)) return false
+        // Resize grips own the bottom-corner border segments.
+        if (hitResizeHandle(event) != null) return false
         panelContainer.getLocationOnScreen(locationScratch)
         val localX = event.rawX - locationScratch[0]
         val localY = event.rawY - locationScratch[1]
