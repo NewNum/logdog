@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="logdog_title">Logdog</string>
+    <string name="logdog_clear">清空</string>
+    <string name="logdog_clear_confirm_title">清空日志</string>
+    <string name="logdog_clear_confirm_message">确定要清空全部日志吗？</string>
+    <string name="logdog_clear_confirm_positive">清空</string>
+    <string name="logdog_clear_confirm_negative">取消</string>
+    <string name="logdog_minimize">—</string>
+    <string name="logdog_bubble_label">L</string>
+</resources>

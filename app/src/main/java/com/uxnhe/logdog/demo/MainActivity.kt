@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.uxnhe.logdog.LogDoy
+import com.uxnhe.logdog.LogDog
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,7 +20,7 @@ class MainActivity : AppCompatActivity() {
             insets
         }
         findViewById<Button>(R.id.btn_log).setOnClickListener {
-            LogDoy.log("UI", "clicked at ${System.currentTimeMillis()}")
+            LogDog.log("UI", "clicked at ${System.currentTimeMillis()}")
         }
         findViewById<Button>(R.id.btn_second).setOnClickListener {
             startActivity(Intent(this, SecondActivity::class.java))

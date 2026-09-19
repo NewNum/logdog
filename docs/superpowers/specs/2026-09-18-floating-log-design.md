@@ -1,4 +1,4 @@
-# LogDoy 悬浮日志库设计
+# Logdog 悬浮日志库设计
 
 日期：2026-09-18  
 状态：已定稿（待实现）
@@ -18,7 +18,7 @@
 
 | Module | 类型 | 职责 |
 |--------|------|------|
-| `:logdoy` | Android Library | 悬浮日志核心 |
+| `:logdog` | Android Library | 悬浮日志核心 |
 | `:app` | Application | Demo：初始化并演示写日志 |
 
 `minSdk` 与宿主一致（当前工程为 24）。
@@ -26,7 +26,7 @@
 ## 架构
 
 ```
-任意线程 LogDoy.log()
+任意线程 Logdog.log()
         │
         ▼
    LogBuffer（环形，上限 500）
@@ -41,7 +41,7 @@ FloatingLogController
 
 ### 组件职责
 
-1. **`LogDoy`（门面）**  
+1. **`Logdog`（门面）**  
    唯一对外入口：`init(Application)`、`log(...)`。
 
 2. **`LogBuffer`**  
@@ -60,7 +60,7 @@ FloatingLogController
 ## 对外 API
 
 ```kotlin
-object LogDoy {
+object Logdog {
     fun init(app: Application)
 
     fun log(message: String)
@@ -113,7 +113,7 @@ object LogDoy {
 ## 测试（MVP）
 
 - **单元**：未 init 写入 → init 后内容可见；环形缓冲超量丢最旧
-- **Demo**：自定义 `Application` 中 `LogDoy.init(this)`；主界面按钮连续 `log`；验证拖动、缩小/展开；可选第二 Activity 验证跨页保持
+- **Demo**：自定义 `Application` 中 `Logdog.init(this)`；主界面按钮连续 `log`；验证拖动、缩小/展开；可选第二 Activity 验证跨页保持
 
 ## 明确不做（YAGNI）
 
@@ -128,11 +128,11 @@ object LogDoy {
 class DemoApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        LogDoy.init(this)
+        Logdog.init(this)
     }
 }
 
 // 任意处
-LogDoy.log("hello")
-LogDoy.log("Network", "request ok")
+Logdog.log("hello")
+Logdog.log("Network", "request ok")
 ```

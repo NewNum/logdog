@@ -29,7 +29,7 @@ internal class LogListAdapter : RecyclerView.Adapter<LogListAdapter.LogViewHolde
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LogViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.logdoy_log_item, parent, false)
+            .inflate(R.layout.logdog_log_item, parent, false)
         return LogViewHolder(view)
     }
 
@@ -38,7 +38,7 @@ internal class LogListAdapter : RecyclerView.Adapter<LogListAdapter.LogViewHolde
     }
 
     class LogViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val textView: TextView = itemView.findViewById(R.id.logdoy_item_text)
+        private val textView: TextView = itemView.findViewById(R.id.logdog_item_text)
 
         fun bind(entry: LogEntry, timeFormat: SimpleDateFormat) {
             val time = timeFormat.format(Date(entry.timestampMs))

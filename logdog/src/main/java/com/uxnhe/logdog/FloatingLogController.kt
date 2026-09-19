@@ -89,7 +89,7 @@ internal object FloatingLogController {
                 mainHandler.post(deliver)
             }
         }
-        val snap = LogDoy.buffer.subscribe(obs)
+        val snap = LogDog.buffer.subscribe(obs)
         observer = obs
         view.bind(snap)
         ready = true
@@ -101,7 +101,7 @@ internal object FloatingLogController {
     }
 
     private fun detach() {
-        observer?.let { LogDoy.buffer.removeObserver(it) }
+        observer?.let { LogDog.buffer.removeObserver(it) }
         observer = null
         floatingView?.let { v ->
             (v.parent as? ViewGroup)?.removeView(v)

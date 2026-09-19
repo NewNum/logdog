@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the :logdoy library AAR into dist/
+# Build the :logdog library AAR into dist/
 #
 # Usage:
 #   ./scripts/build-aar.sh              # release (default)
@@ -39,12 +39,12 @@ GRADLE_USER_HOME="${GRADLE_USER_HOME:-$HOME/.gradle}"
 export GRADLE_USER_HOME
 
 TASK="assemble$(printf '%s' "${BUILD_TYPE}" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')"
-AAR_SRC="logdoy/build/outputs/aar/logdoy-${BUILD_TYPE}.aar"
+AAR_SRC="logdog/build/outputs/aar/logdog-${BUILD_TYPE}.aar"
 OUT_NAME="logdog-${VERSION}-${BUILD_TYPE}.aar"
 OUT_PATH="${OUT_DIR}/${OUT_NAME}"
 
-echo "==> Building :logdoy:${TASK}"
-./gradlew ":logdoy:${TASK}" --quiet
+echo "==> Building :logdog:${TASK}"
+./gradlew ":logdog:${TASK}" --quiet
 
 if [[ ! -f "$AAR_SRC" ]]; then
   echo "AAR not found: $AAR_SRC" >&2

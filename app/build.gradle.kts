@@ -34,7 +34,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":logdoy"))
+    implementation(project(":logdog"))
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)

@@ -109,14 +109,14 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     init {
         isClickable = false
         isFocusable = false
-        LayoutInflater.from(context).inflate(R.layout.logdoy_floating_root, this, true)
+        LayoutInflater.from(context).inflate(R.layout.logdog_floating_root, this, true)
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
 
-        panelContainer = findViewById(R.id.logdoy_panel_container)
-        clearButton = findViewById(R.id.logdoy_clear)
-        minimizeButton = findViewById(R.id.logdoy_minimize)
-        bubble = findViewById(R.id.logdoy_bubble)
-        logList = findViewById(R.id.logdoy_list)
+        panelContainer = findViewById(R.id.logdog_panel_container)
+        clearButton = findViewById(R.id.logdog_clear)
+        minimizeButton = findViewById(R.id.logdog_minimize)
+        bubble = findViewById(R.id.logdog_bubble)
+        logList = findViewById(R.id.logdog_list)
 
         logList.layoutManager = LinearLayoutManager(context)
         logList.adapter = adapter
@@ -470,16 +470,16 @@ internal class FloatingLogView(context: Context) : FrameLayout(context) {
     private fun confirmClearLogs() {
         if (clearConfirmDialog?.isShowing == true) return
         clearConfirmDialog = AlertDialog.Builder(context)
-            .setTitle(R.string.logdoy_clear_confirm_title)
-            .setMessage(R.string.logdoy_clear_confirm_message)
-            .setPositiveButton(R.string.logdoy_clear_confirm_positive) { _, _ -> clearLogs() }
-            .setNegativeButton(R.string.logdoy_clear_confirm_negative, null)
+            .setTitle(R.string.logdog_clear_confirm_title)
+            .setMessage(R.string.logdog_clear_confirm_message)
+            .setPositiveButton(R.string.logdog_clear_confirm_positive) { _, _ -> clearLogs() }
+            .setNegativeButton(R.string.logdog_clear_confirm_negative, null)
             .setOnDismissListener { clearConfirmDialog = null }
             .show()
     }
 
     private fun clearLogs() {
-        LogDoy.buffer.clear()
+        LogDog.buffer.clear()
         adapter.submit(emptyList())
     }
 

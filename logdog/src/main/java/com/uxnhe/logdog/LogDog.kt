@@ -2,7 +2,7 @@ package com.uxnhe.logdog
 
 import android.app.Application
 
-object LogDoy {
+object LogDog {
     @Volatile
     private var bufferRef = LogBuffer()
     internal val buffer: LogBuffer get() = bufferRef

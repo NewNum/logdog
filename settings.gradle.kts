@@ -22,7 +22,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LogDoy"
+rootProject.name = "Logdog"
 include(":app")
-include(":logdoy")
+include(":logdog")
  

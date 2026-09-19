@@ -6,19 +6,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class LogDoyBufferingTest {
+class LogDogBufferingTest {
     @Before
     fun reset() {
-        LogDoy.initialized = false
-        LogDoy.resetForTest()
+        LogDog.initialized = false
+        LogDog.resetForTest()
     }
 
     @Test
     fun log_beforeInit_stillBuffers() {
-        LogDoy.log("early")
-        LogDoy.log("Net", "ok")
-        assertFalse(LogDoy.initialized)
-        val snap = LogDoy.buffer.snapshot()
+        LogDog.log("early")
+        LogDog.log("Net", "ok")
+        assertFalse(LogDog.initialized)
+        val snap = LogDog.buffer.snapshot()
         assertEquals(2, snap.size)
         assertEquals("early", snap[0].message)
         assertEquals("Net", snap[1].tag)
@@ -27,9 +27,9 @@ class LogDoyBufferingTest {
 
     @Test
     fun log_afterFlagInit_stillAppends() {
-        LogDoy.initialized = true
-        LogDoy.log("later")
-        assertEquals(1, LogDoy.buffer.size())
-        assertTrue(LogDoy.buffer.snapshot().last().message == "later")
+        LogDog.initialized = true
+        LogDog.log("later")
+        assertEquals(1, LogDog.buffer.size())
+        assertTrue(LogDog.buffer.snapshot().last().message == "later")
     }
 }

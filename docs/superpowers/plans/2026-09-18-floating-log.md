@@ -1,10 +1,10 @@
-# LogDoy Floating Log Library Implementation Plan
+# Logdog Floating Log Library Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship an Android library (`:logdoy`) that, after `LogDoy.init(app)`, shows an in-app draggable floating log panel (~1/4 screen) with minimize-to-bubble, and exposes only `init` + `log` APIs with pre-init buffering.
+**Goal:** Ship an Android library (`:logdog`) that, after `Logdog.init(app)`, shows an in-app draggable floating log panel (~1/4 screen) with minimize-to-bubble, and exposes only `init` + `log` APIs with pre-init buffering.
 
-**Architecture:** Thread-safe `LogBuffer` (ring, 500) feeds a `FloatingLogController` registered via `ActivityLifecycleCallbacks`, which attaches `FloatingLogView` to the resumed Activity `DecorView`. `LogDoy` is a thin facade; UI uses View/XML only.
+**Architecture:** Thread-safe `LogBuffer` (ring, 500) feeds a `FloatingLogController` registered via `ActivityLifecycleCallbacks`, which attaches `FloatingLogView` to the resumed Activity `DecorView`. `Logdog` is a thin facade; UI uses View/XML only.
 
 **Tech Stack:** Kotlin, Android Library (AGP 9.3.3), AppCompat/RecyclerView, JUnit4 JVM unit tests for buffer/facade logic.
 
@@ -12,9 +12,9 @@
 
 - In-app overlay only — no `SYSTEM_ALERT_WINDOW`
 - View + XML only — no Compose
-- Public API: `LogDoy.init(Application)`, `LogDoy.log(String)`, `LogDoy.log(String, String)` only
+- Public API: `Logdog.init(Application)`, `Logdog.log(String)`, `Logdog.log(String, String)` only
 - Init → show; no init → no UI; `log` before init still buffers
-- `minSdk = 24`, package/namespace for library: `com.example.logdoy.lib` (app keeps `com.example.logdoy`)
+- `minSdk = 24`, package/namespace for library: `com.example.logdog.lib` (app keeps `com.example.logdog`)
 - Ring buffer capacity: 500
 - Spec: `docs/superpowers/specs/2026-09-18-floating-log-design.md`
 
@@ -24,38 +24,38 @@
 
 | Path | Responsibility |
 |------|----------------|
-| `logdoy/build.gradle.kts` | Library module build |
-| `logdoy/src/main/AndroidManifest.xml` | Empty manifest (no components) |
-| `logdoy/src/main/java/com/example/logdoy/lib/LogEntry.kt` | Log data class |
-| `logdoy/src/main/java/com/example/logdoy/lib/LogBuffer.kt` | Thread-safe ring buffer + observers |
-| `logdoy/src/main/java/com/example/logdoy/lib/LogDoy.kt` | Public facade |
-| `logdoy/src/main/java/com/example/logdoy/lib/FloatingLogController.kt` | Lifecycle attach/detach + state |
-| `logdoy/src/main/java/com/example/logdoy/lib/FloatingLogView.kt` | Panel/bubble UI, drag, list |
-| `logdoy/src/main/java/com/example/logdoy/lib/LogListAdapter.kt` | RecyclerView adapter |
-| `logdoy/src/main/res/layout/logdoy_floating_root.xml` | Root overlay container |
-| `logdoy/src/main/res/layout/logdoy_panel.xml` | Expanded panel |
-| `logdoy/src/main/res/layout/logdoy_log_item.xml` | One log row |
-| `logdoy/src/main/res/drawable/logdoy_panel_bg.xml` | Semi-transparent panel bg |
-| `logdoy/src/main/res/drawable/logdoy_bubble_bg.xml` | Bubble bg |
-| `logdoy/src/main/res/values/strings.xml` | Library strings |
-| `logdoy/src/test/java/com/example/logdoy/lib/LogBufferTest.kt` | Buffer unit tests |
-| `logdoy/src/test/java/com/example/logdoy/lib/LogDoyBufferingTest.kt` | Pre-init buffering tests |
-| `settings.gradle.kts` | Include `:logdoy` |
+| `logdog/build.gradle.kts` | Library module build |
+| `logdog/src/main/AndroidManifest.xml` | Empty manifest (no components) |
+| `logdog/src/main/java/com/example/logdog/lib/LogEntry.kt` | Log data class |
+| `logdog/src/main/java/com/example/logdog/lib/LogBuffer.kt` | Thread-safe ring buffer + observers |
+| `logdog/src/main/java/com/example/logdog/lib/Logdog.kt` | Public facade |
+| `logdog/src/main/java/com/example/logdog/lib/FloatingLogController.kt` | Lifecycle attach/detach + state |
+| `logdog/src/main/java/com/example/logdog/lib/FloatingLogView.kt` | Panel/bubble UI, drag, list |
+| `logdog/src/main/java/com/example/logdog/lib/LogListAdapter.kt` | RecyclerView adapter |
+| `logdog/src/main/res/layout/logdog_floating_root.xml` | Root overlay container |
+| `logdog/src/main/res/layout/logdog_panel.xml` | Expanded panel |
+| `logdog/src/main/res/layout/logdog_log_item.xml` | One log row |
+| `logdog/src/main/res/drawable/logdog_panel_bg.xml` | Semi-transparent panel bg |
+| `logdog/src/main/res/drawable/logdog_bubble_bg.xml` | Bubble bg |
+| `logdog/src/main/res/values/strings.xml` | Library strings |
+| `logdog/src/test/java/com/example/logdog/lib/LogBufferTest.kt` | Buffer unit tests |
+| `logdog/src/test/java/com/example/logdog/lib/LogdogBufferingTest.kt` | Pre-init buffering tests |
+| `settings.gradle.kts` | Include `:logdog` |
 | `gradle/libs.versions.toml` | Add `android-library` + recyclerview |
 | `build.gradle.kts` | Apply library plugin false |
-| `app/build.gradle.kts` | Depend on `:logdoy` |
-| `app/src/main/java/.../DemoApp.kt` | Call `LogDoy.init` |
+| `app/build.gradle.kts` | Depend on `:logdog` |
+| `app/src/main/java/.../DemoApp.kt` | Call `Logdog.init` |
 | `app/src/main/AndroidManifest.xml` | Register Application + SecondActivity |
 | `app/src/main/.../MainActivity.kt` + layout | Demo log button |
 | `app/src/main/.../SecondActivity.kt` + layout | Cross-activity demo |
 
 ---
 
-### Task 1: Scaffold `:logdoy` module
+### Task 1: Scaffold `:logdog` module
 
 **Files:**
-- Create: `logdoy/build.gradle.kts`
-- Create: `logdoy/src/main/AndroidManifest.xml`
+- Create: `logdog/build.gradle.kts`
+- Create: `logdog/src/main/AndroidManifest.xml`
 - Modify: `settings.gradle.kts`
 - Modify: `gradle/libs.versions.toml`
 - Modify: `build.gradle.kts`
@@ -63,7 +63,7 @@
 
 **Interfaces:**
 - Consumes: existing AGP / version catalog
-- Produces: compilable empty `:logdoy` Android library; `:app` depends on it
+- Produces: compilable empty `:logdog` Android library; `:app` depends on it
 
 - [ ] **Step 1: Add library plugin and RecyclerView to version catalog**
 
@@ -93,12 +93,12 @@ plugins {
 Replace the include line with:
 
 ```kotlin
-rootProject.name = "LogDoy"
+rootProject.name = "Logdog"
 include(":app")
-include(":logdoy")
+include(":logdog")
 ```
 
-- [ ] **Step 4: Create `logdoy/build.gradle.kts`**
+- [ ] **Step 4: Create `logdog/build.gradle.kts`**
 
 ```kotlin
 plugins {
@@ -106,7 +106,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.logdoy.lib"
+    namespace = "com.example.logdog.lib"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -135,26 +135,26 @@ dependencies {
 
 - [ ] **Step 5: Create empty manifest and consumer rules**
 
-`logdoy/src/main/AndroidManifest.xml`:
+`logdog/src/main/AndroidManifest.xml`:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <manifest />
 ```
 
-`logdoy/consumer-rules.pro`: empty file (or a single comment line).
+`logdog/consumer-rules.pro`: empty file (or a single comment line).
 
 - [ ] **Step 6: Wire app dependency**
 
 In `app/build.gradle.kts` `dependencies` block add:
 
 ```kotlin
-implementation(project(":logdoy"))
+implementation(project(":logdog"))
 ```
 
 - [ ] **Step 7: Verify modules resolve**
 
-Run: `./gradlew :logdoy:assembleDebug :app:assembleDebug`
+Run: `./gradlew :logdog:assembleDebug :app:assembleDebug`
 
 Expected: BUILD SUCCESSFUL
 
@@ -162,8 +162,8 @@ Expected: BUILD SUCCESSFUL
 
 ```bash
 git add settings.gradle.kts build.gradle.kts gradle/libs.versions.toml \
-  logdoy/ app/build.gradle.kts
-git commit -m "chore: scaffold :logdoy Android library module"
+  logdog/ app/build.gradle.kts
+git commit -m "chore: scaffold :logdog Android library module"
 ```
 
 ---
@@ -171,9 +171,9 @@ git commit -m "chore: scaffold :logdoy Android library module"
 ### Task 2: `LogEntry` + `LogBuffer` (TDD)
 
 **Files:**
-- Create: `logdoy/src/main/java/com/example/logdoy/lib/LogEntry.kt`
-- Create: `logdoy/src/main/java/com/example/logdoy/lib/LogBuffer.kt`
-- Test: `logdoy/src/test/java/com/example/logdoy/lib/LogBufferTest.kt`
+- Create: `logdog/src/main/java/com/example/logdog/lib/LogEntry.kt`
+- Create: `logdog/src/main/java/com/example/logdog/lib/LogBuffer.kt`
+- Test: `logdog/src/test/java/com/example/logdog/lib/LogBufferTest.kt`
 
 **Interfaces:**
 - Consumes: none
@@ -191,7 +191,7 @@ git commit -m "chore: scaffold :logdoy Android library module"
 Create `LogBufferTest.kt`:
 
 ```kotlin
-package com.example.logdoy.lib
+package com.example.logdog.lib
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -242,7 +242,7 @@ class LogBufferTest {
 
 - [ ] **Step 2: Run tests — expect compile/fail**
 
-Run: `./gradlew :logdoy:testDebugUnitTest --tests com.example.logdoy.lib.LogBufferTest`
+Run: `./gradlew :logdog:testDebugUnitTest --tests com.example.logdog.lib.LogBufferTest`
 
 Expected: FAIL (classes missing)
 
@@ -251,7 +251,7 @@ Expected: FAIL (classes missing)
 `LogEntry.kt`:
 
 ```kotlin
-package com.example.logdoy.lib
+package com.example.logdog.lib
 
 data class LogEntry(
     val timestampMs: Long,
@@ -263,7 +263,7 @@ data class LogEntry(
 `LogBuffer.kt`:
 
 ```kotlin
-package com.example.logdoy.lib
+package com.example.logdog.lib
 
 import java.util.ArrayDeque
 import java.util.concurrent.CopyOnWriteArrayList
@@ -303,38 +303,38 @@ class LogBuffer(private val capacity: Int = 500) {
 
 - [ ] **Step 4: Run tests — expect PASS**
 
-Run: `./gradlew :logdoy:testDebugUnitTest --tests com.example.logdoy.lib.LogBufferTest`
+Run: `./gradlew :logdog:testDebugUnitTest --tests com.example.logdog.lib.LogBufferTest`
 
 Expected: BUILD SUCCESSFUL, all tests PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add logdoy/src/main/java/com/example/logdoy/lib/LogEntry.kt \
-  logdoy/src/main/java/com/example/logdoy/lib/LogBuffer.kt \
-  logdoy/src/test/java/com/example/logdoy/lib/LogBufferTest.kt
+git add logdog/src/main/java/com/example/logdog/lib/LogEntry.kt \
+  logdog/src/main/java/com/example/logdog/lib/LogBuffer.kt \
+  logdog/src/test/java/com/example/logdog/lib/LogBufferTest.kt
 git commit -m "feat: add thread-safe LogBuffer with ring capacity"
 ```
 
 ---
 
-### Task 3: `LogDoy` facade with pre-init buffering (TDD)
+### Task 3: `Logdog` facade with pre-init buffering (TDD)
 
 **Files:**
-- Create: `logdoy/src/main/java/com/example/logdoy/lib/LogDoy.kt`
-- Test: `logdoy/src/test/java/com/example/logdoy/lib/LogDoyBufferingTest.kt`
+- Create: `logdog/src/main/java/com/example/logdog/lib/Logdog.kt`
+- Test: `logdog/src/test/java/com/example/logdog/lib/LogdogBufferingTest.kt`
 
 **Interfaces:**
 - Consumes: `LogBuffer`, `LogEntry`
 - Produces:
-  - `object LogDoy` with `init(app: Application)`, `log(message: String)`, `log(tag: String, message: String)`
+  - `object Logdog` with `init(app: Application)`, `log(message: String)`, `log(tag: String, message: String)`
   - Internal (same module, `internal`): `internal val buffer: LogBuffer`, `internal var initialized: Boolean`, hook for controller start used in Task 6
-  - For unit tests without Android Framework: extract pure buffering into testable path — `LogDoy` uses `System.currentTimeMillis()` and always writes to shared `buffer` before any UI; `init` sets flag and calls `FloatingLogController.start(app)` (controller stubbed/no-op until Task 5–6)
+  - For unit tests without Android Framework: extract pure buffering into testable path — `Logdog` uses `System.currentTimeMillis()` and always writes to shared `buffer` before any UI; `init` sets flag and calls `FloatingLogController.start(app)` (controller stubbed/no-op until Task 5–6)
 
 **Note:** JVM unit tests cannot construct `Application`. Structure as:
 
 ```kotlin
-object LogDoy {
+object Logdog {
     internal val buffer = LogBuffer()
     @Volatile internal var initialized: Boolean = false
     @Volatile private var started: Boolean = false
@@ -362,7 +362,7 @@ Use a single private `log(tag: String?, message: String)` to avoid overload ambi
 - [ ] **Step 1: Write failing buffering tests**
 
 ```kotlin
-package com.example.logdoy.lib
+package com.example.logdog.lib
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -370,20 +370,20 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class LogDoyBufferingTest {
+class LogdogBufferingTest {
     @Before
     fun reset() {
         // Reset singleton state between tests via internal API
-        LogDoy.initialized = false
-        LogDoy.resetForTest()
+        Logdog.initialized = false
+        Logdog.resetForTest()
     }
 
     @Test
     fun log_beforeInit_stillBuffers() {
-        LogDoy.log("early")
-        LogDoy.log("Net", "ok")
-        assertFalse(LogDoy.initialized)
-        val snap = LogDoy.buffer.snapshot()
+        Logdog.log("early")
+        Logdog.log("Net", "ok")
+        assertFalse(Logdog.initialized)
+        val snap = Logdog.buffer.snapshot()
         assertEquals(2, snap.size)
         assertEquals("early", snap[0].message)
         assertEquals("Net", snap[1].tag)
@@ -392,17 +392,17 @@ class LogDoyBufferingTest {
 
     @Test
     fun log_afterFlagInit_stillAppends() {
-        LogDoy.initialized = true
-        LogDoy.log("later")
-        assertEquals(1, LogDoy.buffer.size())
-        assertTrue(LogDoy.buffer.snapshot().last().message == "later")
+        Logdog.initialized = true
+        Logdog.log("later")
+        assertEquals(1, Logdog.buffer.size())
+        assertTrue(Logdog.buffer.snapshot().last().message == "later")
     }
 }
 ```
 
-Add `internal fun resetForTest()` on `LogDoy` that clears buffer observers, replaces buffer contents by recreating, and resets `started`/`initialized`/`starter` — only for tests.
+Add `internal fun resetForTest()` on `Logdog` that clears buffer observers, replaces buffer contents by recreating, and resets `started`/`initialized`/`starter` — only for tests.
 
-Implementation detail for reset (in `LogDoy.kt`):
+Implementation detail for reset (in `Logdog.kt`):
 
 ```kotlin
 @VisibleForTesting
@@ -418,7 +418,7 @@ internal fun resetForTest() {
 Prefer this structure so tests work:
 
 ```kotlin
-object LogDoy {
+object Logdog {
     @Volatile
     private var bufferRef = LogBuffer()
     internal val buffer: LogBuffer get() = bufferRef
@@ -436,18 +436,18 @@ Use `androidx.annotation.VisibleForTesting` or omit annotation and keep `interna
 
 - [ ] **Step 2: Run test — expect FAIL**
 
-Run: `./gradlew :logdoy:testDebugUnitTest --tests com.example.logdoy.lib.LogDoyBufferingTest`
+Run: `./gradlew :logdog:testDebugUnitTest --tests com.example.logdog.lib.LogdogBufferingTest`
 
-Expected: FAIL (LogDoy missing)
+Expected: FAIL (Logdog missing)
 
-- [ ] **Step 3: Implement `LogDoy.kt`**
+- [ ] **Step 3: Implement `Logdog.kt`**
 
 ```kotlin
-package com.example.logdoy.lib
+package com.example.logdog.lib
 
 import android.app.Application
 
-object LogDoy {
+object Logdog {
     @Volatile
     private var bufferRef = LogBuffer()
     internal val buffer: LogBuffer get() = bufferRef
@@ -492,16 +492,16 @@ object LogDoy {
 
 - [ ] **Step 4: Run tests — expect PASS**
 
-Run: `./gradlew :logdoy:testDebugUnitTest --tests "com.example.logdoy.lib.*"`
+Run: `./gradlew :logdog:testDebugUnitTest --tests "com.example.logdog.lib.*"`
 
 Expected: all PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add logdoy/src/main/java/com/example/logdoy/lib/LogDoy.kt \
-  logdoy/src/test/java/com/example/logdoy/lib/LogDoyBufferingTest.kt
-git commit -m "feat: add LogDoy facade with pre-init log buffering"
+git add logdog/src/main/java/com/example/logdog/lib/Logdog.kt \
+  logdog/src/test/java/com/example/logdog/lib/LogdogBufferingTest.kt
+git commit -m "feat: add Logdog facade with pre-init log buffering"
 ```
 
 ---
@@ -509,14 +509,14 @@ git commit -m "feat: add LogDoy facade with pre-init log buffering"
 ### Task 4: Floating UI layouts + `FloatingLogView`
 
 **Files:**
-- Create: `logdoy/src/main/res/layout/logdoy_floating_root.xml`
-- Create: `logdoy/src/main/res/layout/logdoy_panel.xml`
-- Create: `logdoy/src/main/res/layout/logdoy_log_item.xml`
-- Create: `logdoy/src/main/res/drawable/logdoy_panel_bg.xml`
-- Create: `logdoy/src/main/res/drawable/logdoy_bubble_bg.xml`
-- Create: `logdoy/src/main/res/values/strings.xml`
-- Create: `logdoy/src/main/java/com/example/logdoy/lib/LogListAdapter.kt`
-- Create: `logdoy/src/main/java/com/example/logdoy/lib/FloatingLogView.kt`
+- Create: `logdog/src/main/res/layout/logdog_floating_root.xml`
+- Create: `logdog/src/main/res/layout/logdog_panel.xml`
+- Create: `logdog/src/main/res/layout/logdog_log_item.xml`
+- Create: `logdog/src/main/res/drawable/logdog_panel_bg.xml`
+- Create: `logdog/src/main/res/drawable/logdog_bubble_bg.xml`
+- Create: `logdog/src/main/res/values/strings.xml`
+- Create: `logdog/src/main/java/com/example/logdog/lib/LogListAdapter.kt`
+- Create: `logdog/src/main/java/com/example/logdog/lib/FloatingLogView.kt`
 
 **Interfaces:**
 - Consumes: `LogEntry`, `LogBuffer.snapshot` / incremental entries
@@ -529,7 +529,7 @@ git commit -m "feat: add LogDoy facade with pre-init log buffering"
 
 - [ ] **Step 1: Add drawables and strings**
 
-`logdoy_panel_bg.xml`:
+`logdog_panel_bg.xml`:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -540,7 +540,7 @@ git commit -m "feat: add LogDoy facade with pre-init log buffering"
 </shape>
 ```
 
-`logdoy_bubble_bg.xml`:
+`logdog_bubble_bg.xml`:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -555,23 +555,23 @@ git commit -m "feat: add LogDoy facade with pre-init log buffering"
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="logdoy_title">LogDoy</string>
-    <string name="logdoy_minimize">—</string>
-    <string name="logdoy_bubble_label">L</string>
+    <string name="logdog_title">Logdog</string>
+    <string name="logdog_minimize">—</string>
+    <string name="logdog_bubble_label">L</string>
 </resources>
 ```
 
 - [ ] **Step 2: Add layouts**
 
-`logdoy_log_item.xml`: single `TextView` (`@+id/logdoy_item_text`), `12sp`, white, padding `4dp`, `fontFamily=monospace`.
+`logdog_log_item.xml`: single `TextView` (`@+id/logdog_item_text`), `12sp`, white, padding `4dp`, `fontFamily=monospace`.
 
-`logdoy_panel.xml`: vertical `LinearLayout` with:
-- header `LinearLayout` horizontal: title `TextView` (`logdoy_title_view`, weight 1) + minimize `TextView`/`ImageButton` (`logdoy_minimize`)
-- `RecyclerView` (`logdoy_list`) weight 1
+`logdog_panel.xml`: vertical `LinearLayout` with:
+- header `LinearLayout` horizontal: title `TextView` (`logdog_title_view`, weight 1) + minimize `TextView`/`ImageButton` (`logdog_minimize`)
+- `RecyclerView` (`logdog_list`) weight 1
 
-`logdoy_floating_root.xml`: `FrameLayout` match_parent containing:
-- include/merge panel container `FrameLayout` (`logdoy_panel_container`) that inflates panel
-- bubble `TextView` (`logdoy_bubble`) 48dp, gravity center, bg bubble, initially `gone`
+`logdog_floating_root.xml`: `FrameLayout` match_parent containing:
+- include/merge panel container `FrameLayout` (`logdog_panel_container`) that inflates panel
+- bubble `TextView` (`logdog_bubble`) 48dp, gravity center, bg bubble, initially `gone`
 
 - [ ] **Step 3: Implement `LogListAdapter`**
 
@@ -585,7 +585,7 @@ val text = if (entry.tag.isNullOrEmpty()) "$time  ${entry.message}" else "$time 
 - [ ] **Step 4: Implement `FloatingLogView`**
 
 Behavior requirements in code:
-1. Inflate `logdoy_floating_root` into self (`LayoutParams.MATCH_PARENT` for overlay root).
+1. Inflate `logdog_floating_root` into self (`LayoutParams.MATCH_PARENT` for overlay root).
 2. Panel container sized to `parentWidth/2` × `parentHeight/2` after layout (use `ViewTreeObserver` or `onSizeChanged` of parent); default `translationX/Y` so panel sits bottom-end with 16dp margin.
 3. Header touch: track `ACTION_DOWN`/`MOVE` to drag panel; on `UP` clamp translation so panel stays fully inside parent bounds; invoke `onStateChanged(true, x, y)`.
 4. Minimize click: hide panel, show bubble at same approximate corner; `onStateChanged(false, x, y)`.
@@ -596,15 +596,15 @@ Use touch slop from `ViewConfiguration.get(context).scaledTouchSlop` to distingu
 
 - [ ] **Step 5: Compile library**
 
-Run: `./gradlew :logdoy:assembleDebug`
+Run: `./gradlew :logdog:assembleDebug`
 
 Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add logdoy/src/main/res logdoy/src/main/java/com/example/logdoy/lib/FloatingLogView.kt \
-  logdoy/src/main/java/com/example/logdoy/lib/LogListAdapter.kt
+git add logdog/src/main/res logdog/src/main/java/com/example/logdog/lib/FloatingLogView.kt \
+  logdog/src/main/java/com/example/logdog/lib/LogListAdapter.kt
 git commit -m "feat: add FloatingLogView panel and bubble UI"
 ```
 
@@ -613,10 +613,10 @@ git commit -m "feat: add FloatingLogView panel and bubble UI"
 ### Task 5: `FloatingLogController` lifecycle attach
 
 **Files:**
-- Create: `logdoy/src/main/java/com/example/logdoy/lib/FloatingLogController.kt`
+- Create: `logdog/src/main/java/com/example/logdog/lib/FloatingLogController.kt`
 
 **Interfaces:**
-- Consumes: `LogDoy.buffer`, `FloatingLogView`
+- Consumes: `Logdog.buffer`, `FloatingLogView`
 - Produces:
   - `object FloatingLogController` with `fun start(app: Application)`
   - Registers `Application.ActivityLifecycleCallbacks`
@@ -628,7 +628,7 @@ git commit -m "feat: add FloatingLogView panel and bubble UI"
 - [ ] **Step 1: Implement controller**
 
 ```kotlin
-package com.example.logdoy.lib
+package com.example.logdog.lib
 
 import android.app.Activity
 import android.app.Application
@@ -688,7 +688,7 @@ object FloatingLogController {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             ),
         )
-        view.bind(LogDoy.buffer.snapshot())
+        view.bind(Logdog.buffer.snapshot())
         view.applyState(expanded, posX, posY)
         val obs: (LogEntry) -> Unit = { entry ->
             mainHandler.post {
@@ -696,12 +696,12 @@ object FloatingLogController {
             }
         }
         observer = obs
-        LogDoy.buffer.addObserver(obs)
+        Logdog.buffer.addObserver(obs)
         attachedActivity = WeakReference(activity)
     }
 
     private fun detach() {
-        observer?.let { LogDoy.buffer.removeObserver(it) }
+        observer?.let { Logdog.buffer.removeObserver(it) }
         observer = null
         floatingView?.let { v ->
             (v.parent as? ViewGroup)?.removeView(v)
@@ -722,24 +722,24 @@ And set root `importantForAccessibility` as needed. Critical: host UI under the 
 
 - [ ] **Step 2: Compile**
 
-Run: `./gradlew :logdoy:assembleDebug`
+Run: `./gradlew :logdog:assembleDebug`
 
 Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add logdoy/src/main/java/com/example/logdoy/lib/FloatingLogController.kt \
-  logdoy/src/main/java/com/example/logdoy/lib/FloatingLogView.kt
+git add logdog/src/main/java/com/example/logdog/lib/FloatingLogController.kt \
+  logdog/src/main/java/com/example/logdog/lib/FloatingLogView.kt
 git commit -m "feat: attach floating log view across activity lifecycle"
 ```
 
 ---
 
-### Task 6: Wire `LogDoy.init` → controller
+### Task 6: Wire `Logdog.init` → controller
 
 **Files:**
-- Modify: `logdoy/src/main/java/com/example/logdoy/lib/LogDoy.kt`
+- Modify: `logdog/src/main/java/com/example/logdog/lib/Logdog.kt`
 
 **Interfaces:**
 - Consumes: `FloatingLogController.start`
@@ -747,7 +747,7 @@ git commit -m "feat: attach floating log view across activity lifecycle"
 
 - [ ] **Step 1: Wire starter**
 
-In `LogDoy` object init / property default:
+In `Logdog` object init / property default:
 
 ```kotlin
 init {
@@ -768,15 +768,15 @@ internal fun resetForTest() {
 
 - [ ] **Step 2: Re-run unit tests**
 
-Run: `./gradlew :logdoy:testDebugUnitTest`
+Run: `./gradlew :logdog:testDebugUnitTest`
 
 Expected: PASS (buffering tests never invoke Application)
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add logdoy/src/main/java/com/example/logdoy/lib/LogDoy.kt
-git commit -m "feat: LogDoy.init starts floating log controller"
+git add logdog/src/main/java/com/example/logdog/lib/Logdog.kt
+git commit -m "feat: Logdog.init starts floating log controller"
 ```
 
 ---
@@ -784,32 +784,32 @@ git commit -m "feat: LogDoy.init starts floating log controller"
 ### Task 7: Demo app integration
 
 **Files:**
-- Create: `app/src/main/java/com/example/logdoy/DemoApp.kt`
-- Create: `app/src/main/java/com/example/logdoy/SecondActivity.kt`
+- Create: `app/src/main/java/com/example/logdog/DemoApp.kt`
+- Create: `app/src/main/java/com/example/logdog/SecondActivity.kt`
 - Create: `app/src/main/res/layout/activity_second.xml`
 - Modify: `app/src/main/AndroidManifest.xml`
-- Modify: `app/src/main/java/com/example/logdoy/MainActivity.kt`
+- Modify: `app/src/main/java/com/example/logdog/MainActivity.kt`
 - Modify: `app/src/main/res/layout/activity_main.xml`
 - Modify: `app/src/main/res/values/strings.xml` (add button labels if needed)
 
 **Interfaces:**
-- Consumes: `com.example.logdoy.lib.LogDoy`
+- Consumes: `com.example.logdog.lib.Logdog`
 - Produces: runnable demo that shows floating panel after launch
 
 - [ ] **Step 1: Create `DemoApp`**
 
 ```kotlin
-package com.example.logdoy
+package com.example.logdog
 
 import android.app.Application
-import com.example.logdoy.lib.LogDoy
+import com.example.logdog.lib.Logdog
 
 class DemoApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        LogDoy.log("before-init-should-buffer")
-        LogDoy.init(this)
-        LogDoy.log("DemoApp", "initialized")
+        Logdog.log("before-init-should-buffer")
+        Logdog.init(this)
+        Logdog.log("DemoApp", "initialized")
     }
 }
 ```
@@ -838,7 +838,7 @@ Both centered vertically stacked.
 
 ```kotlin
 findViewById<Button>(R.id.btn_log).setOnClickListener {
-    LogDoy.log("UI", "clicked at ${System.currentTimeMillis()}")
+    Logdog.log("UI", "clicked at ${System.currentTimeMillis()}")
 }
 findViewById<Button>(R.id.btn_second).setOnClickListener {
     startActivity(Intent(this, SecondActivity::class.java))
@@ -851,7 +851,7 @@ Keep existing edge-to-edge padding logic if present.
 
 Simple layout with `TextView` “第二页 — 悬浮窗应仍在” and `Button` finish.
 
-In `onCreate`, `LogDoy.log("Second", "opened")`.
+In `onCreate`, `Logdog.log("Second", "opened")`.
 
 - [ ] **Step 6: Assemble app**
 
@@ -863,7 +863,7 @@ Expected: BUILD SUCCESSFUL
 
 ```bash
 git add app/
-git commit -m "feat: demo app initializes LogDoy and exercises logging"
+git commit -m "feat: demo app initializes Logdog and exercises logging"
 ```
 
 ---
@@ -900,4 +900,4 @@ git commit -m "fix: polish floating log touch and layout behavior"
 
 1. **Spec coverage:** init+log API, pre-init buffer, in-app DecorView overlay, 1/4 size, drag, minimize bubble, realtime updates, ring 500, demo — all mapped to Tasks 1–8. No SYSTEM_ALERT_WINDOW / Compose / show-hide-clear.
 2. **Placeholders:** none intentionally left; layout XML described with ids and structure for implementer to write fully in Task 4.
-3. **Type consistency:** `LogEntry`, `LogBuffer`, `LogDoy.buffer`, `FloatingLogController.start(Application)`, `FloatingLogView.bind/append/applyState/onStateChanged` used consistently across tasks.
+3. **Type consistency:** `LogEntry`, `LogBuffer`, `Logdog.buffer`, `FloatingLogController.start(Application)`, `FloatingLogView.bind/append/applyState/onStateChanged` used consistently across tasks.

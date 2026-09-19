@@ -6,17 +6,17 @@
     android:focusable="false">
 
     <FrameLayout
-        android:id="@+id/logdoy_panel_container"
+        android:id="@+id/logdog_panel_container"
         android:layout_width="0dp"
         android:layout_height="0dp">
 
         <include
-            layout="@layout/logdoy_panel"
+            layout="@layout/logdog_panel"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
         <com.uxnhe.logdog.PanelResizeHandlesView
-            android:id="@+id/logdoy_resize_handles"
+            android:id="@+id/logdog_resize_handles"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clickable="false"
@@ -24,12 +24,12 @@
     </FrameLayout>
 
     <TextView
-        android:id="@+id/logdoy_bubble"
+        android:id="@+id/logdog_bubble"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:background="@drawable/logdoy_bubble_bg"
+        android:background="@drawable/logdog_bubble_bg"
         android:gravity="center"
-        android:text="@string/logdoy_bubble_label"
+        android:text="@string/logdog_bubble_label"
         android:textColor="@android:color/white"
         android:textSize="16sp"
         android:textStyle="bold"
